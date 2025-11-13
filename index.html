@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dori's PCT Adventure</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            font-size: 0.9rem;
+            color: #bdc3c7;
+            margin-top: 0.3rem;
+        }
+        
+        #map {
+            flex: 1;
+            width: 100%;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .info-panel h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        
+        .info-panel p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .legend h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 4px;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .legend-circle {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid white;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 2000;
+            font-size: 1.1rem;
+            color: #2c3e50;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Dori's PCT Adventure</h1>
+        <div class="subtitle">2,650 miles from Mexico to Canada</div>
+    </header>
+    
+    <div id="map"></div>
+    
+    <div class="info-panel">
+        <h3>Trail Information</h3>
+        <p><strong>Total Distance:</strong> ~2,650 miles (4,265 km)</p>
+        <p><strong>States:</strong> California, Oregon, Washington</p>
+        <p><strong>Southern Terminus:</strong> Campo, CA (Mexican Border)</p>
+        <p><strong>Northern Terminus:</strong> Manning Park, BC (Canadian Border)</p>
+    </div>
+    
+    <div class="legend">
+        <h4>Map Legend</h4>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #e74c3c;"></div>
+            <span>Pacific Crest Trail</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-circle" style="background-color: #27ae60;"></div>
+            <span>Daily Camping Locations</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-circle" style="background-color: #3498db;"></div>
+            <span>Major Landmarks</span>
+        </div>
+    </div>
+    
+    <div id="loading" class="loading">Loading PCT trail data...</div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([40.0, -120.0], 6);
+        
+        // Add terrain tile layer (Stamen Terrain - clean and modern)
+        // Alternative options:
+        // 1. Outdoors style: 'https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png' (requires API key)
+        // 2. Satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        // 3. Clean streets: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+
+        L.tileLayer('https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Load PCT trail from GPX-derived JSON file
+        let pctTrail = null;
+
+        fetch('pct_trail.json')
+            .then(response => response.json())
+            .then(coordinates => {
+                console.log(`Loaded ${coordinates.length} PCT trail points`);
+
+                // Draw the PCT trail
+                pctTrail = L.polyline(coordinates, {
+                    color: '#e74c3c',
+                    weight: 4,
+                    opacity: 0.8,
+                    smoothFactor: 1
+                }).addTo(map);
+
+                // Fit map to show entire trail
+                map.fitBounds(pctTrail.getBounds(), { padding: [50, 50] });
+            })
+            .catch(error => {
+                console.error('Error loading PCT trail:', error);
+                // Fallback to simple line if GPX data fails to load
+                const fallbackCoordinates = [
+                    [32.6099, -116.4653], // Southern Terminus
+                    [49.0015, -120.7761]  // Northern Terminus
+                ];
+                pctTrail = L.polyline(fallbackCoordinates, {
+                    color: '#e74c3c',
+                    weight: 4,
+                    opacity: 0.8
+                }).addTo(map);
+            });
+        
+        // Add markers for termini
+        const southernTerminus = L.marker([32.5897, -116.467], {
+            title: 'Southern Terminus'
+        }).addTo(map);
+        southernTerminus.bindPopup('<b>Southern Terminus</b><br>Campo, CA<br>Mile 0');
+
+        const northernTerminus = L.marker([49.0003, -120.8021], {
+            title: 'Northern Terminus'
+        }).addTo(map);
+        northernTerminus.bindPopup('<b>Northern Terminus</b><br>Manning Park, BC<br>Mile 2,650');
+
+        // Add markers for major landmarks
+        const landmarks = [
+            { name: 'Mount Whitney', coords: [36.5783, -118.2923], info: 'Highest point in contiguous US (14,505 ft)' },
+            { name: 'Yosemite National Park', coords: [37.7485, -119.5731], info: 'Iconic Sierra Nevada scenery' },
+            { name: 'Mount Hood', coords: [45.3736, -121.6959], info: 'Oregon\'s highest peak (11,249 ft)' },
+            { name: 'Mount Rainier', coords: [46.8523, -121.7603], info: 'Washington\'s iconic volcano (14,411 ft)' }
+        ];
+
+        landmarks.forEach(landmark => {
+            const marker = L.circleMarker(landmark.coords, {
+                radius: 6,
+                fillColor: '#3498db',
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+            marker.bindPopup(`<b>${landmark.name}</b><br>${landmark.info}`);
+        });
+        
+        // Load and display daily camping locations
+        fetch('daily_locations.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Could not load daily locations data');
+                }
+                return response.json();
+            })
+            .then(locations => {
+                console.log(`Loaded ${locations.length} daily camping locations`);
+
+                // Add markers for each camping location
+                locations.forEach(location => {
+                    if (location.latitude && location.longitude) {
+                        const marker = L.circleMarker([location.latitude, location.longitude], {
+                            radius: 8,
+                            fillColor: '#27ae60',
+                            color: '#fff',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        }).addTo(map);
+
+                        // Create popup content
+                        const dayInfo = location.day ? `<b>Day ${location.day}</b><br>` : '';
+                        const dateInfo = `<b>Date:</b> ${new Date(location.date).toLocaleDateString()}<br>`;
+                        const messageInfo = `<b>Message:</b> ${location.message}<br>`;
+                        const coordsInfo = `<b>Coordinates:</b> ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}<br>`;
+                        const altInfo = location.altitude ? `<b>Altitude:</b> ${Math.round(location.altitude)}m (${Math.round(location.altitude * 3.28084)}ft)` : '';
+
+                        marker.bindPopup(dayInfo + dateInfo + messageInfo + coordsInfo + altInfo);
+
+                        // Add day number label if available
+                        if (location.day) {
+                            const dayLabel = L.marker([location.latitude, location.longitude], {
+                                icon: L.divIcon({
+                                    className: 'day-label',
+                                    html: `<div style="
+                                        background: white;
+                                        border: 2px solid #27ae60;
+                                        border-radius: 50%;
+                                        width: 24px;
+                                        height: 24px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        font-size: 10px;
+                                        font-weight: bold;
+                                        color: #27ae60;
+                                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                                    ">${location.day}</div>`,
+                                    iconSize: [24, 24],
+                                    iconAnchor: [12, 12]
+                                })
+                            }).addTo(map);
+                        }
+                    }
+                });
+
+                // Update info panel with camping location count
+                const infoPanelContent = document.querySelector('.info-panel');
+                const campingInfo = document.createElement('p');
+                campingInfo.innerHTML = `<strong>Camping Locations:</strong> ${locations.length}`;
+                infoPanelContent.appendChild(campingInfo);
+
+                // Hide loading message
+                document.getElementById('loading').classList.add('hidden');
+            })
+            .catch(error => {
+                console.warn('Could not load daily locations:', error);
+                console.log('Map will display without camping locations');
+                // Hide loading message even if data fails to load
+                document.getElementById('loading').classList.add('hidden');
+            });
+
+        console.log('PCT Trail Map loaded successfully');
+    </script>
+</body>
+</html>
+
