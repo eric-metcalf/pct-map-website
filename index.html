@@ -257,6 +257,14 @@
                 // Add markers for each camping location
                 locations.forEach(location => {
                     if (location.latitude && location.longitude) {
+                        // Create popup content
+                        const dayInfo = location.day ? `<b>Day ${location.day}</b><br>` : '';
+                        const dateInfo = `<b>Date:</b> ${new Date(location.date).toLocaleDateString()}<br>`;
+                        const messageInfo = `<b>Message:</b> ${location.message}<br>`;
+                        const coordsInfo = `<b>Coordinates:</b> ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}<br>`;
+                        const altInfo = location.altitude ? `<b>Altitude:</b> ${Math.round(location.altitude)}m (${Math.round(location.altitude * 3.28084)}ft)` : '';
+                        const popupContent = dayInfo + dateInfo + messageInfo + coordsInfo + altInfo;
+
                         const marker = L.circleMarker([location.latitude, location.longitude], {
                             radius: 8,
                             fillColor: '#27ae60',
@@ -266,14 +274,7 @@
                             fillOpacity: 0.9
                         }).addTo(map);
 
-                        // Create popup content
-                        const dayInfo = location.day ? `<b>Day ${location.day}</b><br>` : '';
-                        const dateInfo = `<b>Date:</b> ${new Date(location.date).toLocaleDateString()}<br>`;
-                        const messageInfo = `<b>Message:</b> ${location.message}<br>`;
-                        const coordsInfo = `<b>Coordinates:</b> ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}<br>`;
-                        const altInfo = location.altitude ? `<b>Altitude:</b> ${Math.round(location.altitude)}m (${Math.round(location.altitude * 3.28084)}ft)` : '';
-
-                        marker.bindPopup(dayInfo + dateInfo + messageInfo + coordsInfo + altInfo);
+                        marker.bindPopup(popupContent);
 
                         // Add day number label if available
                         if (location.day) {
@@ -298,6 +299,9 @@
                                     iconAnchor: [12, 12]
                                 })
                             }).addTo(map);
+
+                            // Attach the same popup to the day label so clicking it also shows the message
+                            dayLabel.bindPopup(popupContent);
                         }
                     }
                 });
