@@ -128,6 +128,53 @@
             margin: 0;
             opacity: 0;
         }
+
+        .controls-panel {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 250px;
+            transition: all 0.3s ease;
+        }
+
+        .controls-panel.collapsed {
+            padding: 10px;
+        }
+
+        .controls-panel h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+
+        .control-item label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .control-item input[type="checkbox"] {
+            margin-right: 10px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
         
         .legend-item {
             display: flex;
@@ -177,7 +224,34 @@
     </header>
     
     <div id="map"></div>
-    
+
+    <div class="controls-panel" id="controls-panel">
+        <h3>
+            Map Controls
+            <button class="collapse-btn" id="controls-collapse-btn" title="Collapse panel">−</button>
+        </h3>
+        <div class="panel-content" id="controls-content">
+            <div class="control-item">
+                <label>
+                    <input type="checkbox" id="toggle-camping" checked>
+                    Show Camping Locations
+                </label>
+            </div>
+            <div class="control-item">
+                <label>
+                    <input type="checkbox" id="toggle-landmarks" checked>
+                    Show Landmarks
+                </label>
+            </div>
+            <div class="control-item">
+                <label>
+                    <input type="checkbox" id="toggle-trail" checked>
+                    Show PCT Trail
+                </label>
+            </div>
+        </div>
+    </div>
+
     <div class="info-panel" id="info-panel">
         <h3>
             Trail Information
@@ -277,6 +351,7 @@
         northernTerminus.bindPopup('<b>Northern Terminus</b><br>Manning Park, BC<br>Mile 2,650');
 
         // Add markers for major landmarks
+        const landmarkMarkers = [];
         const landmarks = [
             { name: 'Mount Whitney', coords: [36.5783, -118.2923], info: 'Highest point in contiguous US (14,505 ft)' },
             { name: 'Yosemite National Park', coords: [37.7485, -119.5731], info: 'Iconic Sierra Nevada scenery' },
@@ -294,9 +369,12 @@
                 fillOpacity: 0.8
             }).addTo(map);
             marker.bindPopup(`<b>${landmark.name}</b><br>${landmark.info}`);
+            landmarkMarkers.push(marker);
         });
         
         // Load and display daily camping locations
+        const campingMarkers = [];
+
         fetch('daily_locations.json')
             .then(response => {
                 if (!response.ok) {
@@ -328,6 +406,7 @@
                         }).addTo(map);
 
                         marker.bindPopup(popupContent);
+                        campingMarkers.push(marker);
 
                         // Add day number label if available
                         if (location.day) {
@@ -355,6 +434,7 @@
 
                             // Attach the same popup to the day label so clicking it also shows the message
                             dayLabel.bindPopup(popupContent);
+                            campingMarkers.push(dayLabel);
                         }
                     }
                 });
@@ -402,9 +482,41 @@
             });
         }
 
-        // Setup collapse buttons for both panels
+        // Setup collapse buttons for all panels
         setupCollapseButton('info-collapse-btn', 'info-content', 'info-panel');
         setupCollapseButton('legend-collapse-btn', 'legend-content', 'legend-panel');
+        setupCollapseButton('controls-collapse-btn', 'controls-content', 'controls-panel');
+
+        // Toggle visibility of map elements
+        document.getElementById('toggle-camping').addEventListener('change', function(e) {
+            campingMarkers.forEach(marker => {
+                if (e.target.checked) {
+                    map.addLayer(marker);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        });
+
+        document.getElementById('toggle-landmarks').addEventListener('change', function(e) {
+            landmarkMarkers.forEach(marker => {
+                if (e.target.checked) {
+                    map.addLayer(marker);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        });
+
+        document.getElementById('toggle-trail').addEventListener('change', function(e) {
+            if (pctTrail) {
+                if (e.target.checked) {
+                    map.addLayer(pctTrail);
+                } else {
+                    map.removeLayer(pctTrail);
+                }
+            }
+        });
     </script>
 </body>
 </html>
