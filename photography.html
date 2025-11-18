@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Gallery - Dori's PCT Journey</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #000;
+            overflow: hidden;
+        }
+        
+        /* Header matching home page */
+        .site-header {
+            border-top: 5px solid #038285;
+            border-bottom: 1px solid #e8e8e8;
+            min-height: 56px;
+            background-color: #fff;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .wrapper {
+            max-width: calc(800px - (30px * 2));
+            margin-right: auto;
+            margin-left: auto;
+            padding-right: 30px;
+            padding-left: 30px;
+        }
+
+        .site-header .wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 56px;
+        }
+
+        .site-title {
+            font-size: 26px;
+            font-weight: 300;
+            line-height: 56px;
+            letter-spacing: -1px;
+            margin-bottom: 0;
+            color: #038285;
+            text-decoration: none;
+        }
+
+        .site-title:hover {
+            text-decoration: none;
+            color: #026668;
+        }
+
+        .site-nav {
+            line-height: 56px;
+        }
+
+        .site-nav .page-link {
+            color: #1D1D1B;
+            line-height: 1.5;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin-left: 5px;
+        }
+
+        .site-nav .page-link:hover {
+            background-color: #e6f7f7;
+            color: #038285;
+        }
+
+        /* Slideshow styles */
+        .slideshow-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            height: calc(100vh - 56px);
+            background: #000;
+        }
+
+        .slideshow-photo-panel {
+            width: 50%;
+            height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .slideshow-photo-panel img {
+            max-width: 90%;
+            max-height: 70%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .slideshow-info {
+            color: white;
+            padding: 20px;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        .slideshow-info h2 {
+            margin: 10px 0;
+            font-size: 1.5rem;
+        }
+
+        .slideshow-info p {
+            margin: 8px 0;
+            font-size: 1rem;
+            color: #ccc;
+        }
+
+        #slideshow-day-info {
+            font-weight: bold;
+            color: #038285 !important;
+            font-size: 1.1rem !important;
+            margin-top: 15px !important;
+        }
+
+        #slideshow-message {
+            font-style: italic;
+            color: #e8e8e8 !important;
+            font-size: 1.05rem !important;
+            max-width: 600px;
+            margin: 10px auto !important;
+            line-height: 1.4;
+        }
+
+        .slideshow-map-panel {
+            width: 50%;
+            height: 100%;
+            position: relative;
+        }
+
+        #slideshow-map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .slideshow-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 2001;
+        }
+
+        .slideshow-btn {
+            background: rgba(3, 130, 133, 0.9);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .slideshow-btn:hover {
+            background: #038285;
+            transform: scale(1.05);
+        }
+
+        .slideshow-btn.close {
+            background: rgba(29, 29, 27, 0.9);
+            color: white;
+        }
+
+        .slideshow-btn.close:hover {
+            background: #1D1D1B;
+        }
+
+        .slideshow-progress {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 1.2rem;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 6px;
+            z-index: 2001;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 2000;
+            font-size: 1.1rem;
+            color: #038285;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header matching home page -->
+    <header class="site-header">
+        <div class="wrapper">
+            <a class="site-title" href="index.html">Dori's PCT Journey</a>
+            <nav class="site-nav">
+                <a class="page-link" href="index.html">Home</a>
+                <a class="page-link" href="map.html">Map</a>
+                <a class="page-link" href="photography.html">Photos</a>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Slideshow Container -->
+    <div class="slideshow-container">
+        <div class="slideshow-photo-panel">
+            <img id="slideshow-photo" src="" alt="PCT Photo">
+            <div class="slideshow-info">
+                <h2 id="slideshow-filename"></h2>
+                <p id="slideshow-date"></p>
+                <p id="slideshow-location"></p>
+                <p id="slideshow-day-info"></p>
+                <p id="slideshow-message"></p>
+            </div>
+        </div>
+        
+        <div class="slideshow-map-panel">
+            <div id="slideshow-map"></div>
+            <div class="slideshow-progress">
+                <span id="slideshow-current">1</span> / <span id="slideshow-total">0</span>
+            </div>
+            <div class="slideshow-controls">
+                <button class="slideshow-btn" id="prev-btn">⏮ Previous</button>
+                <button class="slideshow-btn" id="play-pause-btn">⏸ Pause</button>
+                <button class="slideshow-btn" id="next-btn">Next ⏭</button>
+                <button class="slideshow-btn close" id="close-slideshow-btn">✕ Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">Loading photos...</div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Slideshow functionality
+        let slideshowPhotos = [];
+        let slideshowDailyLocations = [];
+        let currentSlideIndex = 0;
+        let slideshowMap = null;
+        let slideshowMarker = null;
+        let slideshowCampingMarkers = [];
+        let slideshowCampingMarkersMap = new Map();
+        let slideshowInterval = null;
+        let isPlaying = false;
+        let pctTrail = null;
+
+        // Helper function to calculate distance between two coordinates
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Find nearest camping locations to the north and south of a photo
+        function findNearestCampingLocations(photoLat, photoLon) {
+            if (slideshowDailyLocations.length === 0) return { north: null, south: null };
+
+            let nearestNorth = null;
+            let nearestSouth = null;
+            let minDistanceNorth = Infinity;
+            let minDistanceSouth = Infinity;
+
+            slideshowDailyLocations.forEach(location => {
+                const distance = calculateDistance(photoLat, photoLon, location.latitude, location.longitude);
+
+                if (location.latitude > photoLat) {
+                    if (distance < minDistanceNorth) {
+                        minDistanceNorth = distance;
+                        nearestNorth = location;
+                    }
+                } else if (location.latitude < photoLat) {
+                    if (distance < minDistanceSouth) {
+                        minDistanceSouth = distance;
+                        nearestSouth = location;
+                    }
+                }
+            });
+
+            return { north: nearestNorth, south: nearestSouth };
+        }
+
+        // Parse CSV data
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header.trim()] = values[index] ? values[index].trim() : '';
+                });
+                data.push(row);
+            }
+
+            return data;
+        }
+
+        // Load all data before initializing slideshow
+        Promise.all([
+            // Load PCT trail data
+            fetch('pct_trail.json')
+                .then(response => response.json())
+                .then(coordinates => {
+                    console.log(`Loaded ${coordinates.length} PCT trail points`);
+                    pctTrail = L.polyline(coordinates, {
+                        color: '#e74c3c',
+                        weight: 4,
+                        opacity: 0.8,
+                        smoothFactor: 1,
+                        pane: 'overlayPane'
+                    });
+                    console.log('PCT trail polyline created');
+                })
+                .catch(error => console.error('Error loading PCT trail:', error)),
+
+            // Load daily locations
+            fetch('inputs/map_overlay_metadata/daily_locations.json')
+                .then(response => response.json())
+                .then(data => {
+                    slideshowDailyLocations = data;
+                    console.log('Daily locations loaded:', data.length);
+                })
+                .catch(error => console.error('Error loading daily locations:', error)),
+
+            // Load photo metadata
+            fetch('inputs/map_overlay_metadata/image_metadata.csv')
+                .then(response => response.text())
+                .then(csvText => {
+                    slideshowPhotos = parseCSV(csvText);
+                    document.getElementById('slideshow-total').textContent = slideshowPhotos.length;
+                    console.log('Photos loaded:', slideshowPhotos.length);
+                })
+                .catch(error => {
+                    console.error('Error loading photo metadata:', error);
+                    throw error;
+                })
+        ]).then(() => {
+            // All data loaded, initialize slideshow
+            document.getElementById('loading').classList.add('hidden');
+            initializeSlideshow();
+        }).catch(error => {
+            console.error('Error loading data:', error);
+            document.getElementById('loading').textContent = 'Error loading data';
+        });
+
+        // Initialize slideshow
+        function initializeSlideshow() {
+            // Initialize slideshow map
+            if (!slideshowMap) {
+                slideshowMap = L.map('slideshow-map').setView([40.0, -120.0], 6);
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
+                    attribution: 'Tiles &copy; Esri'
+                }).addTo(slideshowMap);
+
+                // Add PCT trail to slideshow map if available
+                if (pctTrail) {
+                    pctTrail.addTo(slideshowMap);
+                }
+
+                // Add camping location markers to slideshow map
+                slideshowDailyLocations.forEach(location => {
+                    const marker = L.circleMarker([location.latitude, location.longitude], {
+                        radius: 6,
+                        fillColor: '#27ae60',
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(slideshowMap);
+
+                    const popupContent = `
+                        <div style="min-width: 250px;">
+                            <h3 style="margin: 0 0 10px 0; color: #27ae60;">Day ${location.day}</h3>
+                            <p style="margin: 5px 0;"><strong>Date:</strong> ${location.date}</p>
+                            <p style="margin: 10px 0; font-style: italic; color: #555; border-left: 3px solid #f39c12; padding-left: 10px;">${location.message}</p>
+                            <p style="margin: 5px 0;"><strong>Coordinates:</strong> ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}</p>
+                            <p style="margin: 5px 0;"><strong>Altitude:</strong> ${location.altitude} ft</p>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent, {
+                        maxWidth: 350,
+                        minWidth: 250,
+                        autoClose: false,
+                        closeOnClick: false
+                    });
+                    slideshowCampingMarkers.push(marker);
+                    slideshowCampingMarkersMap.set(location.day, marker);
+                });
+            }
+
+            // Force map to render properly
+            setTimeout(() => {
+                if (slideshowMap) {
+                    slideshowMap.invalidateSize();
+                }
+            }, 100);
+
+            currentSlideIndex = 0;
+            showSlide(currentSlideIndex);
+            startAutoPlay();
+        }
+
+        function showSlide(index) {
+            if (slideshowPhotos.length === 0) return;
+
+            // Wrap around
+            if (index >= slideshowPhotos.length) {
+                currentSlideIndex = 0;
+            } else if (index < 0) {
+                currentSlideIndex = slideshowPhotos.length - 1;
+            } else {
+                currentSlideIndex = index;
+            }
+
+            const photo = slideshowPhotos[currentSlideIndex];
+            const lat = parseFloat(photo.latitude);
+            const lon = parseFloat(photo.longitude);
+
+            // Update photo
+            document.getElementById('slideshow-photo').src = `inputs/imagesFromPCT/${photo.fileName}`;
+            document.getElementById('slideshow-filename').textContent = photo.fileName;
+            document.getElementById('slideshow-date').textContent = new Date(photo.dateTaken).toLocaleString();
+            document.getElementById('slideshow-location').textContent = `Location: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            document.getElementById('slideshow-current').textContent = currentSlideIndex + 1;
+
+            // Find nearest camping locations
+            const nearestCampings = findNearestCampingLocations(lat, lon);
+
+            // Update day info and message
+            if (nearestCampings.south || nearestCampings.north) {
+                const closestCamping = nearestCampings.south || nearestCampings.north;
+                document.getElementById('slideshow-day-info').textContent = `Near Day ${closestCamping.day} Camp`;
+                document.getElementById('slideshow-message').textContent = closestCamping.message;
+            } else {
+                document.getElementById('slideshow-day-info').textContent = '';
+                document.getElementById('slideshow-message').textContent = '';
+            }
+
+            // Update map
+            if (slideshowMap) {
+                // Close all popups first
+                slideshowCampingMarkers.forEach(marker => {
+                    marker.closePopup();
+                });
+
+                // Calculate bounds to show photo and both camping locations
+                const boundsPoints = [[lat, lon]];
+                if (nearestCampings.north) {
+                    boundsPoints.push([nearestCampings.north.latitude, nearestCampings.north.longitude]);
+                }
+                if (nearestCampings.south) {
+                    boundsPoints.push([nearestCampings.south.latitude, nearestCampings.south.longitude]);
+                }
+
+                if (boundsPoints.length > 1) {
+                    const bounds = L.latLngBounds(boundsPoints);
+                    slideshowMap.fitBounds(bounds, {
+                        padding: [100, 100],
+                        maxZoom: 14
+                    });
+                } else {
+                    slideshowMap.setView([lat, lon], 15);
+                }
+
+                // Remove old photo marker
+                if (slideshowMarker) {
+                    slideshowMap.removeLayer(slideshowMarker);
+                }
+
+                // Add new photo marker
+                slideshowMarker = L.circleMarker([lat, lon], {
+                    radius: 10,
+                    fillColor: '#f39c12',
+                    color: '#fff',
+                    weight: 3,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                }).addTo(slideshowMap);
+
+                // Open popups for both north and south camping locations
+                setTimeout(() => {
+                    if (nearestCampings.south && slideshowCampingMarkersMap.has(nearestCampings.south.day)) {
+                        const southMarker = slideshowCampingMarkersMap.get(nearestCampings.south.day);
+                        southMarker.openPopup();
+                    }
+
+                    if (nearestCampings.north && slideshowCampingMarkersMap.has(nearestCampings.north.day)) {
+                        const northMarker = slideshowCampingMarkersMap.get(nearestCampings.north.day);
+                        northMarker.openPopup();
+                    }
+                }, 500);
+
+                // Force map to refresh
+                setTimeout(() => {
+                    slideshowMap.invalidateSize();
+                }, 100);
+            }
+        }
+
+        function startAutoPlay() {
+            isPlaying = true;
+            document.getElementById('play-pause-btn').textContent = '⏸ Pause';
+            slideshowInterval = setInterval(() => {
+                showSlide(currentSlideIndex + 1);
+            }, 3000); // 3 seconds per photo
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            document.getElementById('play-pause-btn').textContent = '▶ Play';
+            if (slideshowInterval) {
+                clearInterval(slideshowInterval);
+                slideshowInterval = null;
+            }
+        }
+
+        // Event listeners
+        document.getElementById('prev-btn').addEventListener('click', function() {
+            stopAutoPlay();
+            showSlide(currentSlideIndex - 1);
+        });
+
+        document.getElementById('next-btn').addEventListener('click', function() {
+            stopAutoPlay();
+            showSlide(currentSlideIndex + 1);
+        });
+
+        document.getElementById('play-pause-btn').addEventListener('click', function() {
+            if (isPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        });
+
+        document.getElementById('close-slideshow-btn').addEventListener('click', function() {
+            window.location.href = 'index.html';
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') {
+                stopAutoPlay();
+                showSlide(currentSlideIndex - 1);
+            } else if (e.key === 'ArrowRight') {
+                stopAutoPlay();
+                showSlide(currentSlideIndex + 1);
+            } else if (e.key === ' ') {
+                e.preventDefault();
+                if (isPlaying) {
+                    stopAutoPlay();
+                } else {
+                    startAutoPlay();
+                }
+            } else if (e.key === 'Escape') {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
+

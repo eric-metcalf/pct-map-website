@@ -3,520 +3,387 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dori's PCT Adventure</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+    <title>Dori's PCT Journey</title>
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        * {
+        /* Reset and Base Styles */
+        body, h1, h2, h3, h4, h5, h6, p, blockquote, pre, hr, dl, dd, ol, ul, figure {
             margin: 0;
             padding: 0;
+        }
+
+        body {
+            font: 400 16px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: #111;
+            background-color: #fdfdfd;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        * {
             box-sizing: border-box;
         }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-        }
-        
-        .subtitle {
-            font-size: 0.9rem;
-            color: #bdc3c7;
-            margin-top: 0.3rem;
-        }
-        
-        #map {
-            flex: 1;
-            width: 100%;
-        }
-        
-        .info-panel {
-            position: absolute;
-            top: 80px;
-            right: 10px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
-            max-width: 300px;
-            transition: all 0.3s ease;
+
+        /* Header */
+        .site-header {
+            border-top: 5px solid #038285;
+            border-bottom: 1px solid #e8e8e8;
+            min-height: 56px;
+            background-color: #fff;
+            position: relative;
         }
 
-        .info-panel.collapsed {
-            padding: 10px;
+        .wrapper {
+            max-width: calc(800px - (30px * 2));
+            margin-right: auto;
+            margin-left: auto;
+            padding-right: 30px;
+            padding-left: 30px;
         }
 
-        .info-panel h3 {
-            margin-bottom: 10px;
-            color: #2c3e50;
-            font-size: 1.1rem;
+        .site-header .wrapper {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            min-height: 56px;
         }
 
-        .info-panel p {
-            margin: 5px 0;
-            font-size: 0.9rem;
+        .site-title {
+            font-size: 26px;
+            font-weight: 300;
+            line-height: 56px;
+            letter-spacing: -1px;
+            margin-bottom: 0;
+            color: #038285;
+            text-decoration: none;
+        }
+
+        .site-title:hover {
+            text-decoration: none;
+            color: #026668;
+        }
+
+        .site-nav {
+            line-height: 56px;
+        }
+
+        .site-nav .page-link {
+            color: #1D1D1B;
+            line-height: 1.5;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin-left: 5px;
+        }
+
+        .site-nav .page-link:hover {
+            background-color: #e6f7f7;
+            color: #038285;
+        }
+
+        /* Page Content */
+        .page-content {
+            padding: 60px 0;
+        }
+
+        .section {
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-size: 42px;
+            font-weight: 300;
+            margin-bottom: 20px;
+            color: #111;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 400;
+            margin-bottom: 15px;
+            color: #1D1D1B;
+        }
+
+        p {
+            margin-bottom: 15px;
+            line-height: 1.7;
             color: #555;
         }
 
-        .legend {
-            position: absolute;
-            bottom: 30px;
-            right: 10px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
-            transition: all 0.3s ease;
+        a {
+            color: #038285;
+            text-decoration: none;
+            transition: color 0.3s ease;
         }
 
-        .legend.collapsed {
-            padding: 10px;
+        a:hover {
+            color: #026668;
+            text-decoration: underline;
         }
 
-        .legend h4 {
+        /* Markdown Content Styles */
+        #markdown-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #markdown-content h1 {
+            font-size: 42px;
+            font-weight: 300;
+            margin-bottom: 20px;
+            color: #111;
+            text-align: center;
+        }
+
+        #markdown-content h2 {
+            font-size: 28px;
+            font-weight: 400;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            color: #1D1D1B;
+        }
+
+        #markdown-content h3 {
+            font-size: 22px;
+            font-weight: 400;
+            margin-top: 30px;
             margin-bottom: 10px;
-            color: #2c3e50;
-            font-size: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            color: #038285;
         }
 
-        .collapse-btn {
-            background: none;
+        #markdown-content p {
+            margin-bottom: 15px;
+            line-height: 1.7;
+            color: #555;
+            font-size: 16px;
+        }
+
+        #markdown-content strong {
+            color: #1D1D1B;
+            font-weight: 600;
+        }
+
+        #markdown-content hr {
             border: none;
-            color: #2c3e50;
-            cursor: pointer;
-            font-size: 1.2rem;
-            padding: 0;
-            margin-left: 10px;
-            line-height: 1;
-            transition: transform 0.3s ease;
+            border-top: 1px solid #e8e8e8;
+            margin: 40px 0;
         }
 
-        .collapse-btn:hover {
-            color: #3498db;
+        #markdown-content ul, #markdown-content ol {
+            margin-bottom: 20px;
+            padding-left: 30px;
+            color: #555;
         }
 
-        .panel-content {
+        #markdown-content li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        #markdown-content a {
+            color: #038285;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border: 1px solid #038285;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 10px;
             transition: all 0.3s ease;
-            overflow: hidden;
         }
 
-        .panel-content.collapsed {
-            max-height: 0;
-            margin: 0;
-            opacity: 0;
+        #markdown-content a:hover {
+            background-color: #038285;
+            color: white;
+            text-decoration: none;
         }
 
-        .controls-panel {
-            position: absolute;
-            bottom: 30px;
-            left: 10px;
-            background: white;
-            padding: 15px;
+        #markdown-content em {
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Journey Cards */
+        .journey-intro {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 40px;
+            line-height: 1.8;
+        }
+
+        .journey-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .journey-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
-            max-width: 250px;
-            transition: all 0.3s ease;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+            text-decoration: none;
+            color: #333;
+            display: block;
         }
 
-        .controls-panel.collapsed {
-            padding: 10px;
+        .journey-card:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+            text-decoration: none;
         }
 
-        .controls-panel h3 {
+        .journey-card-content {
+            padding: 30px;
+        }
+
+        .journey-card h2 {
+            font-size: 24px;
+            font-weight: 400;
             margin-bottom: 10px;
-            color: #2c3e50;
-            font-size: 1.1rem;
+            color: #038285;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .journey-card .icon {
+            font-size: 28px;
+        }
+
+        .journey-card p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #555;
+            margin: 0;
+        }
+
+        /* Footer */
+        .site-footer {
+            border-top: 1px solid #e8e8e8;
+            padding: 30px 0;
+            background-color: #f9f9f9;
+            margin-top: 60px;
+        }
+
+        .footer-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .control-item {
-            display: flex;
-            align-items: center;
-            margin: 10px 0;
-            font-size: 0.9rem;
+        .footer-left p {
+            font-size: 14px;
+            color: #828282;
+            margin: 0;
         }
 
-        .control-item label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            user-select: none;
+        /* Responsive */
+        @media screen and (max-width: 800px) {
+            .wrapper {
+                max-width: calc(800px - 30px);
+                padding-right: 15px;
+                padding-left: 15px;
+            }
+
+            .journey-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
         }
 
-        .control-item input[type="checkbox"] {
-            margin-right: 10px;
-            cursor: pointer;
-            width: 18px;
-            height: 18px;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin: 5px 0;
-            font-size: 0.85rem;
-        }
+        @media screen and (max-width: 600px) {
+            .site-header .wrapper {
+                flex-direction: column;
+                align-items: flex-start;
+            }
 
-        .legend-color {
-            width: 30px;
-            height: 4px;
-            margin-right: 10px;
-            border-radius: 2px;
-        }
+            .site-nav {
+                line-height: normal;
+                padding-bottom: 10px;
+            }
 
-        .legend-circle {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 10px;
-            border: 2px solid white;
-        }
-        
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 2000;
-            font-size: 1.1rem;
-            color: #2c3e50;
-        }
-        
-        .hidden {
-            display: none;
+            .site-nav .page-link {
+                margin-left: 0;
+                margin-right: 10px;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Dori's PCT Adventure</h1>
-        <div class="subtitle">2,650 miles from Mexico to Canada</div>
+    <!-- Header/Navigation -->
+    <header class="site-header">
+        <div class="wrapper">
+            <a class="site-title" href="index.html">Dori's PCT Journey</a>
+            <nav class="site-nav">
+                <a class="page-link" href="index.html">Home</a>
+                <a class="page-link" href="map.html">Map</a>
+                <a class="page-link" href="photography.html">Photos</a>
+            </nav>
+        </div>
     </header>
-    
-    <div id="map"></div>
 
-    <div class="controls-panel" id="controls-panel">
-        <h3>
-            Map Controls
-            <button class="collapse-btn" id="controls-collapse-btn" title="Collapse panel">−</button>
-        </h3>
-        <div class="panel-content" id="controls-content">
-            <div class="control-item">
-                <label>
-                    <input type="checkbox" id="toggle-camping" checked>
-                    Show Camping Locations
-                </label>
-            </div>
-            <div class="control-item">
-                <label>
-                    <input type="checkbox" id="toggle-landmarks" checked>
-                    Show Landmarks
-                </label>
-            </div>
-            <div class="control-item">
-                <label>
-                    <input type="checkbox" id="toggle-trail" checked>
-                    Show PCT Trail
-                </label>
-            </div>
+    <!-- Page Content -->
+    <div class="page-content">
+        <div class="wrapper">
+            <!-- Journey Section - Content loaded from markdown -->
+            <section class="section">
+                <div id="markdown-content">
+                    <p style="text-align: center; color: #038285;">Loading content...</p>
+                </div>
+            </section>
         </div>
     </div>
 
-    <div class="info-panel" id="info-panel">
-        <h3>
-            Trail Information
-            <button class="collapse-btn" id="info-collapse-btn" title="Collapse panel">−</button>
-        </h3>
-        <div class="panel-content" id="info-content">
-            <p><strong>Total Distance:</strong> ~2,650 miles (4,265 km)</p>
-            <p><strong>States:</strong> California, Oregon, Washington</p>
-            <p><strong>Southern Terminus:</strong> Campo, CA (Mexican Border)</p>
-            <p><strong>Northern Terminus:</strong> Manning Park, BC (Canadian Border)</p>
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="wrapper">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <p>Pacific Crest Trail • Mexico to Canada • 2,650 Miles</p>
+                </div>
+            </div>
         </div>
-    </div>
+    </footer>
 
-    <div class="legend" id="legend-panel">
-        <h4>
-            Map Legend
-            <button class="collapse-btn" id="legend-collapse-btn" title="Collapse panel">−</button>
-        </h4>
-        <div class="panel-content" id="legend-content">
-            <div class="legend-item">
-                <div class="legend-color" style="background-color: #e74c3c;"></div>
-                <span>Pacific Crest Trail</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-circle" style="background-color: #27ae60;"></div>
-                <span>Daily Camping Locations</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-circle" style="background-color: #3498db;"></div>
-                <span>Major Landmarks</span>
-            </div>
-        </div>
-    </div>
-    
-    <div id="loading" class="loading">Loading PCT trail data...</div>
-    
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script>
-        // Initialize the map
-        const map = L.map('map').setView([40.0, -120.0], 6);
-        
-        // Add ArcGIS Satellite imagery - free satellite/aerial view
-        // Alternative free options:
-        // 1. OpenStreetMap: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-        // 2. OpenTopoMap: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
-        // 3. Clean streets: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-        }).addTo(map);
-        
-        // Load PCT trail from GPX-derived JSON file
-        let pctTrail = null;
-
-        fetch('pct_trail.json')
-            .then(response => response.json())
-            .then(coordinates => {
-                console.log(`Loaded ${coordinates.length} PCT trail points`);
-
-                // Draw the PCT trail
-                pctTrail = L.polyline(coordinates, {
-                    color: '#e74c3c',
-                    weight: 4,
-                    opacity: 0.8,
-                    smoothFactor: 1
-                }).addTo(map);
-
-                // Fit map to show entire trail
-                map.fitBounds(pctTrail.getBounds(), { padding: [50, 50] });
-            })
-            .catch(error => {
-                console.error('Error loading PCT trail:', error);
-                // Fallback to simple line if GPX data fails to load
-                const fallbackCoordinates = [
-                    [32.6099, -116.4653], // Southern Terminus
-                    [49.0015, -120.7761]  // Northern Terminus
-                ];
-                pctTrail = L.polyline(fallbackCoordinates, {
-                    color: '#e74c3c',
-                    weight: 4,
-                    opacity: 0.8
-                }).addTo(map);
-            });
-        
-        // Add markers for termini
-        const southernTerminus = L.marker([32.5897, -116.467], {
-            title: 'Southern Terminus'
-        }).addTo(map);
-        southernTerminus.bindPopup('<b>Southern Terminus</b><br>Campo, CA<br>Mile 0');
-
-        const northernTerminus = L.marker([49.0003, -120.8021], {
-            title: 'Northern Terminus'
-        }).addTo(map);
-        northernTerminus.bindPopup('<b>Northern Terminus</b><br>Manning Park, BC<br>Mile 2,650');
-
-        // Add markers for major landmarks
-        const landmarkMarkers = [];
-        const landmarks = [
-            { name: 'Mount Whitney', coords: [36.5783, -118.2923], info: 'Highest point in contiguous US (14,505 ft)' },
-            { name: 'Yosemite National Park', coords: [37.7485, -119.5731], info: 'Iconic Sierra Nevada scenery' },
-            { name: 'Mount Hood', coords: [45.3736, -121.6959], info: 'Oregon\'s highest peak (11,249 ft)' },
-            { name: 'Mount Rainier', coords: [46.8523, -121.7603], info: 'Washington\'s iconic volcano (14,411 ft)' }
-        ];
-
-        landmarks.forEach(landmark => {
-            const marker = L.circleMarker(landmark.coords, {
-                radius: 6,
-                fillColor: '#3498db',
-                color: '#fff',
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.8
-            }).addTo(map);
-            marker.bindPopup(`<b>${landmark.name}</b><br>${landmark.info}`);
-            landmarkMarkers.push(marker);
-        });
-        
-        // Load and display daily camping locations
-        const campingMarkers = [];
-
-        fetch('daily_locations.json')
+        // Load and render markdown content
+        fetch('content/home.md')
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Could not load daily locations data');
+                    throw new Error('Failed to load content');
                 }
-                return response.json();
+                return response.text();
             })
-            .then(locations => {
-                console.log(`Loaded ${locations.length} daily camping locations`);
-
-                // Add markers for each camping location
-                locations.forEach(location => {
-                    if (location.latitude && location.longitude) {
-                        // Create popup content
-                        const dayInfo = location.day ? `<b>Day ${location.day}</b><br>` : '';
-                        const dateInfo = `<b>Date:</b> ${new Date(location.date).toLocaleDateString()}<br>`;
-                        const messageInfo = `<b>Message:</b> ${location.message}<br>`;
-                        const coordsInfo = `<b>Coordinates:</b> ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}<br>`;
-                        const altInfo = location.altitude ? `<b>Altitude:</b> ${Math.round(location.altitude)}m (${Math.round(location.altitude * 3.28084)}ft)` : '';
-                        const popupContent = dayInfo + dateInfo + messageInfo + coordsInfo + altInfo;
-
-                        const marker = L.circleMarker([location.latitude, location.longitude], {
-                            radius: 8,
-                            fillColor: '#27ae60',
-                            color: '#fff',
-                            weight: 2,
-                            opacity: 1,
-                            fillOpacity: 0.9
-                        }).addTo(map);
-
-                        marker.bindPopup(popupContent);
-                        campingMarkers.push(marker);
-
-                        // Add day number label if available
-                        if (location.day) {
-                            const dayLabel = L.marker([location.latitude, location.longitude], {
-                                icon: L.divIcon({
-                                    className: 'day-label',
-                                    html: `<div style="
-                                        background: white;
-                                        border: 2px solid #27ae60;
-                                        border-radius: 50%;
-                                        width: 24px;
-                                        height: 24px;
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: center;
-                                        font-size: 10px;
-                                        font-weight: bold;
-                                        color: #27ae60;
-                                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                                    ">${location.day}</div>`,
-                                    iconSize: [24, 24],
-                                    iconAnchor: [12, 12]
-                                })
-                            }).addTo(map);
-
-                            // Attach the same popup to the day label so clicking it also shows the message
-                            dayLabel.bindPopup(popupContent);
-                            campingMarkers.push(dayLabel);
-                        }
-                    }
-                });
-
-                // Update info panel with camping location count
-                const infoPanelContent = document.getElementById('info-content');
-                const campingInfo = document.createElement('p');
-                campingInfo.innerHTML = `<strong>Camping Locations:</strong> ${locations.length}`;
-                infoPanelContent.appendChild(campingInfo);
-
-                // Hide loading message
-                document.getElementById('loading').classList.add('hidden');
+            .then(markdown => {
+                // Parse markdown to HTML
+                const html = marked.parse(markdown);
+                document.getElementById('markdown-content').innerHTML = html;
             })
             .catch(error => {
-                console.warn('Could not load daily locations:', error);
-                console.log('Map will display without camping locations');
-                // Hide loading message even if data fails to load
-                document.getElementById('loading').classList.add('hidden');
+                console.error('Error loading markdown:', error);
+                document.getElementById('markdown-content').innerHTML = `
+                    <h1>Welcome to Dori's PCT Journey</h1>
+                    <p style="color: #e74c3c;">Error loading content. Please refresh the page.</p>
+                `;
             });
-
-        console.log('PCT Trail Map loaded successfully');
-
-        // Collapse/Expand functionality for panels
-        function setupCollapseButton(buttonId, contentId, panelId) {
-            const button = document.getElementById(buttonId);
-            const content = document.getElementById(contentId);
-            const panel = document.getElementById(panelId);
-
-            button.addEventListener('click', function() {
-                const isCollapsed = content.classList.contains('collapsed');
-
-                if (isCollapsed) {
-                    // Expand
-                    content.classList.remove('collapsed');
-                    panel.classList.remove('collapsed');
-                    button.textContent = '−';
-                    button.title = 'Collapse panel';
-                } else {
-                    // Collapse
-                    content.classList.add('collapsed');
-                    panel.classList.add('collapsed');
-                    button.textContent = '+';
-                    button.title = 'Expand panel';
-                }
-            });
-        }
-
-        // Setup collapse buttons for all panels
-        setupCollapseButton('info-collapse-btn', 'info-content', 'info-panel');
-        setupCollapseButton('legend-collapse-btn', 'legend-content', 'legend-panel');
-        setupCollapseButton('controls-collapse-btn', 'controls-content', 'controls-panel');
-
-        // Toggle visibility of map elements
-        document.getElementById('toggle-camping').addEventListener('change', function(e) {
-            campingMarkers.forEach(marker => {
-                if (e.target.checked) {
-                    map.addLayer(marker);
-                } else {
-                    map.removeLayer(marker);
-                }
-            });
-        });
-
-        document.getElementById('toggle-landmarks').addEventListener('change', function(e) {
-            landmarkMarkers.forEach(marker => {
-                if (e.target.checked) {
-                    map.addLayer(marker);
-                } else {
-                    map.removeLayer(marker);
-                }
-            });
-        });
-
-        document.getElementById('toggle-trail').addEventListener('change', function(e) {
-            if (pctTrail) {
-                if (e.target.checked) {
-                    map.addLayer(pctTrail);
-                } else {
-                    map.removeLayer(pctTrail);
-                }
-            }
-        });
     </script>
 </body>
 </html>
