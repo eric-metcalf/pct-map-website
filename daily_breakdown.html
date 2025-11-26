@@ -409,7 +409,7 @@
         }
 
         .day-map {
-            height: 300px;
+            height: 500px;
             border-radius: 8px;
             overflow: hidden;
             border: 2px solid #e0e0e0;
@@ -470,7 +470,10 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
+
+    <!-- Leaflet GPX Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
+
     <script>
         // Data storage
         let photos = [];
@@ -481,6 +484,7 @@
         let photosByDay = {};
         let currentPhotoIndex = 0;
         let currentDayPhotos = [];
+        let photoMarkers = {}; // Store photo markers by day
 
         // Parse CSV data
         function parseCSV(text) {
@@ -566,6 +570,11 @@
 
             const bounds = [];
 
+            // Initialize marker storage for this day
+            if (!photoMarkers[dayNumber]) {
+                photoMarkers[dayNumber] = [];
+            }
+
             // Add markers for each photo
             dayPhotos.forEach((photo, index) => {
                 const lat = parseFloat(photo.latitude);
@@ -573,36 +582,43 @@
                 bounds.push([lat, lon]);
 
                 const marker = L.circleMarker([lat, lon], {
-                    radius: 6,
+                    radius: 5,
                     fillColor: '#f39c12',
                     color: '#fff',
-                    weight: 2,
+                    weight: 1,
                     opacity: 1,
-                    fillOpacity: 0.8
+                    fillOpacity: 0.7
                 }).addTo(map);
 
                 const photoDate = new Date(photo.dateTaken);
-                marker.bindPopup(`
-                    <div style="min-width: 150px;">
+                const popupContent = `
+                    <div style="min-width: 150px; cursor: pointer;">
                         <p style="margin: 5px 0;"><strong>Photo ${index + 1}</strong></p>
                         <p style="margin: 5px 0;">${photoDate.toLocaleTimeString()}</p>
+                        <p style="margin: 5px 0; color: #038285; font-weight: bold;">Click to view photo</p>
                     </div>
-                `);
+                `;
+
+                marker.bindPopup(popupContent);
+
+                // Store marker reference
+                photoMarkers[dayNumber][index] = marker;
+
+                // Add click handler to open photo in gallery
+                marker.on('click', () => {
+                    // Set current day photos if not already set
+                    if (currentDayPhotos !== dayPhotos) {
+                        currentDayPhotos = dayPhotos;
+                    }
+                    // Show the photo in the gallery
+                    showPhoto(index);
+                    // Scroll to the photo viewer
+                    const photoViewer = document.querySelector(`#day-${dayNumber} .photo-viewer`);
+                    if (photoViewer) {
+                        photoViewer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
             });
-
-            // Draw line connecting photos in chronological order
-            if (dayPhotos.length > 1) {
-                const photoCoords = dayPhotos.map(photo => [
-                    parseFloat(photo.latitude),
-                    parseFloat(photo.longitude)
-                ]);
-
-                L.polyline(photoCoords, {
-                    color: '#f39c12',
-                    weight: 3,
-                    opacity: 0.7
-                }).addTo(map);
-            }
 
             // Add camping markers for current and previous day
             const currentDayCamping = campingLocations.find(loc => loc.day === dayNumber);
@@ -632,12 +648,83 @@
                 }).addTo(map).bindPopup(`<strong>Day ${dayNumber - 1} Camp</strong>`);
             }
 
+            // Load GPX tracks for this day
+            loadGPXForDayMap(dayNumber, dayPhotos, map, bounds);
+
             // Fit map to show all points
             if (bounds.length > 0) {
                 map.fitBounds(bounds, { padding: [30, 30] });
             }
 
             return map;
+        }
+
+        // Load GPX track for a specific day on the daily breakdown map
+        async function loadGPXForDayMap(dayNumber, dayPhotos, map, bounds) {
+            try {
+                if (dayPhotos.length === 0) return;
+
+                // Extract date from first photo (format: 2025-04-29T...)
+                const firstPhotoDate = new Date(dayPhotos[0].dateTaken);
+                const dateStr = firstPhotoDate.toISOString().split('T')[0]; // Gets YYYY-MM-DD
+
+                // Load GPX index
+                const indexResponse = await fetch('inputs/map_overlay_metadata/gpx/index.json');
+                const gpxFiles = await indexResponse.json();
+
+                // Find GPX files for this date
+                const dayGPXFiles = gpxFiles.filter(filename => filename.startsWith(dateStr));
+
+                console.log(`Day ${dayNumber}: Found ${dayGPXFiles.length} GPX files for ${dateStr}`);
+
+                if (dayGPXFiles.length === 0) return;
+
+                const parser = new DOMParser();
+
+                // Load and display each GPX file for this day
+                for (const filename of dayGPXFiles) {
+                    const gpxPath = `inputs/map_overlay_metadata/gpx/${filename}`;
+
+                    try {
+                        const gpxResponse = await fetch(gpxPath);
+                        const gpxText = await gpxResponse.text();
+
+                        // Parse GPX
+                        const gpxDoc = parser.parseFromString(gpxText, 'text/xml');
+                        const trackPoints = gpxDoc.querySelectorAll('trkpt');
+
+                        if (trackPoints.length > 0) {
+                            const coordinates = Array.from(trackPoints).map(pt => {
+                                const lat = parseFloat(pt.getAttribute('lat'));
+                                const lon = parseFloat(pt.getAttribute('lon'));
+                                bounds.push([lat, lon]);
+                                return [lat, lon];
+                            });
+
+                            // Create polyline for this GPX track
+                            const track = L.polyline(coordinates, {
+                                color: '#3498db',
+                                weight: 3,
+                                opacity: 0.7,
+                                smoothFactor: 1
+                            }).addTo(map);
+
+                            track.bindPopup(`<b>Hiking Track</b><br>Date: ${dateStr}<br>Points: ${coordinates.length}`);
+
+                            console.log(`Day ${dayNumber}: Loaded GPX track with ${coordinates.length} points`);
+                        }
+                    } catch (err) {
+                        console.warn(`Failed to load GPX file ${filename}:`, err);
+                    }
+                }
+
+                // Refit map to include GPX points
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, { padding: [30, 30] });
+                }
+            } catch (error) {
+                console.error('Error loading GPX for day:', error);
+            }
         }
 
         // Render a day card
@@ -873,6 +960,33 @@
             const nextBtn = document.getElementById('photo-next-btn');
             if (prevBtn) prevBtn.disabled = index === 0;
             if (nextBtn) nextBtn.disabled = index === currentDayPhotos.length - 1;
+
+            // Highlight corresponding marker on map
+            if (currentSelectedDay && photoMarkers[currentSelectedDay]) {
+                photoMarkers[currentSelectedDay].forEach((marker, i) => {
+                    if (i === index) {
+                        // Highlight the active marker
+                        marker.setStyle({
+                            radius: 8,
+                            fillColor: '#e74c3c',
+                            color: '#fff',
+                            weight: 3,
+                            opacity: 1,
+                            fillOpacity: 1
+                        });
+                    } else {
+                        // Reset other markers to default style
+                        marker.setStyle({
+                            radius: 5,
+                            fillColor: '#f39c12',
+                            color: '#fff',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.7
+                        });
+                    }
+                });
+            }
         }
 
         // Populate day selector dropdown
