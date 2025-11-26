@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Breakdown - Dori's PCT Journey</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* Reset and Base Styles */
+        body, h1, h2, h3, h4, h5, h6, p, blockquote, pre, hr, dl, dd, ol, ul, figure {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font: 400 16px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: #111;
+            background-color: #f5f5f5;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        /* Header */
+        .site-header {
+            border-top: 5px solid #038285;
+            border-bottom: 1px solid #e8e8e8;
+            min-height: 56px;
+            background-color: #fff;
+            position: relative;
+        }
+
+        .wrapper {
+            max-width: calc(800px - (30px * 2));
+            margin-right: auto;
+            margin-left: auto;
+            padding-right: 30px;
+            padding-left: 30px;
+        }
+
+        .site-header .wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 56px;
+        }
+
+        .site-title {
+            font-size: 26px;
+            font-weight: 300;
+            line-height: 56px;
+            letter-spacing: -1px;
+            margin-bottom: 0;
+            color: #038285;
+            text-decoration: none;
+        }
+
+        .site-title:hover {
+            text-decoration: none;
+            color: #026668;
+        }
+
+        .site-nav {
+            line-height: 56px;
+        }
+
+        .site-nav .page-link {
+            color: #1D1D1B;
+            line-height: 1.5;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin-left: 8px;
+        }
+
+        .site-nav .page-link:hover {
+            background-color: #f0f0f0;
+            color: #038285;
+        }
+
+        /* Main Content */
+        .page-content {
+            padding: 40px 0;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-heading {
+            font-size: 2rem;
+            font-weight: 300;
+            color: #038285;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Day Selector */
+        .day-selector-container {
+            max-width: 600px;
+            margin: 0 auto 40px;
+            padding: 0 20px;
+        }
+
+        .day-selector-label {
+            display: block;
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .day-selector {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border: 2px solid #038285;
+            border-radius: 8px;
+            background: white;
+            color: #111;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .day-selector:hover {
+            border-color: #026668;
+            box-shadow: 0 2px 8px rgba(3, 130, 133, 0.2);
+        }
+
+        .day-selector:focus {
+            outline: none;
+            border-color: #026668;
+            box-shadow: 0 0 0 3px rgba(3, 130, 133, 0.1);
+        }
+
+        .day-navigation {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .day-nav-btn {
+            flex: 1;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background: #038285;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .day-nav-btn:hover:not(:disabled) {
+            background: #026668;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .day-nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Day Cards Container */
+        .days-container {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            padding: 0 20px;
+        }
+
+        /* Individual Day Card */
+        .day-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .day-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .day-header {
+            background: linear-gradient(135deg, #038285 0%, #026668 100%);
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .day-header h2 {
+            font-size: 1.8rem;
+            font-weight: 300;
+            margin-bottom: 8px;
+        }
+
+        .day-date {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
+
+        .day-message {
+            font-style: italic;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            border-left: 3px solid rgba(255,255,255,0.5);
+            padding-left: 15px;
+            margin-top: 12px;
+        }
+
+        .day-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .day-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Photo Album View */
+        .photos-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .photo-viewer {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .photo-viewer img {
+            max-width: 100%;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        .photo-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .photo-nav-btn:hover {
+            background: rgba(3, 130, 133, 0.9);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .photo-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .photo-nav-btn.prev {
+            left: 15px;
+        }
+
+        .photo-nav-btn.next {
+            right: 15px;
+        }
+
+        .photo-info-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .photo-counter {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .photo-timestamp {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Thumbnail Strip */
+        .thumbnail-strip {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 10px 0;
+            scroll-behavior: smooth;
+        }
+
+        .thumbnail-strip::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .thumbnail-strip::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        .thumbnail-strip::-webkit-scrollbar-thumb {
+            background: #038285;
+            border-radius: 4px;
+        }
+
+        .thumbnail-item {
+            flex-shrink: 0;
+            width: 80px;
+            height: 80px;
+            cursor: pointer;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 3px solid transparent;
+            transition: all 0.2s ease;
+            opacity: 0.6;
+        }
+
+        .thumbnail-item:hover {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .thumbnail-item.active {
+            border-color: #038285;
+            opacity: 1;
+            box-shadow: 0 0 10px rgba(3, 130, 133, 0.5);
+        }
+
+        .thumbnail-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Map and Stats Section */
+        .map-stats-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .stats-box {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #038285;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .stat-value {
+            color: #038285;
+            font-weight: 500;
+        }
+
+        .day-map {
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #e0e0e0;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 1.2rem;
+            color: #038285;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header matching other pages -->
+    <header class="site-header">
+        <div class="wrapper">
+            <a class="site-title" href="index.html">Dori's PCT Journey</a>
+            <nav class="site-nav">
+                <a class="page-link" href="index.html">Home</a>
+                <a class="page-link" href="map.html">Map</a>
+                <a class="page-link" href="photography.html">Photography</a>
+                <a class="page-link" href="daily_breakdown.html">Daily Breakdown</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <h1 class="page-heading">Daily Breakdown</h1>
+        <div id="loading" class="loading">Loading journey data</div>
+
+        <!-- Day Selector -->
+        <div id="day-selector-container" class="day-selector-container" style="display: none;">
+            <label class="day-selector-label" for="day-select">Select a Day:</label>
+            <select id="day-select" class="day-selector">
+                <option value="">Choose a day...</option>
+            </select>
+            <div class="day-navigation">
+                <button id="prev-day-btn" class="day-nav-btn">← Previous Day</button>
+                <button id="next-day-btn" class="day-nav-btn">Next Day →</button>
+            </div>
+        </div>
+
+        <div id="days-container" class="days-container" style="display: none;"></div>
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Data storage
+        let photos = [];
+        let campingLocations = [];
+        let dayMaps = {};
+        let currentSelectedDay = null;
+        let totalDays = 0;
+        let photosByDay = {};
+        let currentPhotoIndex = 0;
+        let currentDayPhotos = [];
+
+        // Parse CSV data
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header.trim()] = values[index] ? values[index].trim() : '';
+                });
+                data.push(row);
+            }
+
+            return data;
+        }
+
+        // Get journey day for a photo based on its date
+        function getJourneyDay(photoDate) {
+            if (photos.length === 0) return null;
+
+            const startDate = new Date(photos[0].dateTaken);
+            startDate.setHours(0, 0, 0, 0);
+
+            const currentDate = new Date(photoDate);
+            currentDate.setHours(0, 0, 0, 0);
+
+            const diffTime = currentDate - startDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            return diffDays + 1;
+        }
+
+        // Get all photos for a specific day
+        function getPhotosForDay(dayNumber) {
+            return photos.filter(photo => {
+                const photoDay = getJourneyDay(photo.dateTaken);
+                return photoDay === dayNumber;
+            });
+        }
+
+        // Calculate distance between two coordinates using Haversine formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Calculate total distance traveled in a day based on photo locations
+        function calculateDayDistance(dayPhotos) {
+            if (dayPhotos.length < 2) return 0;
+
+            let totalDistance = 0;
+            for (let i = 1; i < dayPhotos.length; i++) {
+                const lat1 = parseFloat(dayPhotos[i-1].latitude);
+                const lon1 = parseFloat(dayPhotos[i-1].longitude);
+                const lat2 = parseFloat(dayPhotos[i].latitude);
+                const lon2 = parseFloat(dayPhotos[i].longitude);
+
+                totalDistance += calculateDistance(lat1, lon1, lat2, lon2);
+            }
+
+            return totalDistance;
+        }
+
+        // Create a map for a specific day
+        function createDayMap(dayNumber, dayPhotos, mapElementId) {
+            const mapElement = document.getElementById(mapElementId);
+            if (!mapElement) return null;
+
+            const map = L.map(mapElementId);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri'
+            }).addTo(map);
+
+            const bounds = [];
+
+            // Add markers for each photo
+            dayPhotos.forEach((photo, index) => {
+                const lat = parseFloat(photo.latitude);
+                const lon = parseFloat(photo.longitude);
+                bounds.push([lat, lon]);
+
+                const marker = L.circleMarker([lat, lon], {
+                    radius: 6,
+                    fillColor: '#f39c12',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+
+                const photoDate = new Date(photo.dateTaken);
+                marker.bindPopup(`
+                    <div style="min-width: 150px;">
+                        <p style="margin: 5px 0;"><strong>Photo ${index + 1}</strong></p>
+                        <p style="margin: 5px 0;">${photoDate.toLocaleTimeString()}</p>
+                    </div>
+                `);
+            });
+
+            // Draw line connecting photos in chronological order
+            if (dayPhotos.length > 1) {
+                const photoCoords = dayPhotos.map(photo => [
+                    parseFloat(photo.latitude),
+                    parseFloat(photo.longitude)
+                ]);
+
+                L.polyline(photoCoords, {
+                    color: '#f39c12',
+                    weight: 3,
+                    opacity: 0.7
+                }).addTo(map);
+            }
+
+            // Add camping markers for current and previous day
+            const currentDayCamping = campingLocations.find(loc => loc.day === dayNumber);
+            const previousDayCamping = campingLocations.find(loc => loc.day === dayNumber - 1);
+
+            if (currentDayCamping) {
+                bounds.push([currentDayCamping.latitude, currentDayCamping.longitude]);
+                L.circleMarker([currentDayCamping.latitude, currentDayCamping.longitude], {
+                    radius: 8,
+                    fillColor: '#27ae60',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                }).addTo(map).bindPopup(`<strong>Day ${dayNumber} Camp</strong>`);
+            }
+
+            if (previousDayCamping) {
+                bounds.push([previousDayCamping.latitude, previousDayCamping.longitude]);
+                L.circleMarker([previousDayCamping.latitude, previousDayCamping.longitude], {
+                    radius: 6,
+                    fillColor: '#27ae60',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.7
+                }).addTo(map).bindPopup(`<strong>Day ${dayNumber - 1} Camp</strong>`);
+            }
+
+            // Fit map to show all points
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [30, 30] });
+            }
+
+            return map;
+        }
+
+        // Render a day card
+        function renderDayCard(dayNumber, camping, dayPhotos) {
+            const container = document.getElementById('days-container');
+
+            // Clear existing content
+            container.innerHTML = '';
+
+            const dayCard = document.createElement('div');
+            dayCard.className = 'day-card';
+            dayCard.id = `day-${dayNumber}`;
+
+            // Calculate stats
+            const distance = calculateDayDistance(dayPhotos);
+            const distanceMiles = distance * 0.621371; // Convert km to miles
+
+            // Day header
+            const header = document.createElement('div');
+            header.className = 'day-header';
+
+            const title = document.createElement('h2');
+            title.textContent = `Day ${dayNumber}`;
+
+            const date = document.createElement('div');
+            date.className = 'day-date';
+            if (camping) {
+                const campDate = new Date(camping.date);
+                date.textContent = campDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+
+            const message = document.createElement('div');
+            message.className = 'day-message';
+            message.textContent = camping ? camping.message : '';
+
+            header.appendChild(title);
+            header.appendChild(date);
+            if (camping && camping.message) {
+                header.appendChild(message);
+            }
+
+            // Day content
+            const content = document.createElement('div');
+            content.className = 'day-content';
+
+            // Store current day photos
+            currentDayPhotos = dayPhotos;
+            currentPhotoIndex = 0;
+
+            // Photos section - Album View
+            const photosSection = document.createElement('div');
+            photosSection.className = 'photos-section';
+
+            // Photo viewer
+            const photoViewer = document.createElement('div');
+            photoViewer.className = 'photo-viewer';
+            photoViewer.id = 'photo-viewer';
+
+            // Previous button
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'photo-nav-btn prev';
+            prevBtn.innerHTML = '‹';
+            prevBtn.id = 'photo-prev-btn';
+            prevBtn.onclick = () => showPhoto(currentPhotoIndex - 1);
+
+            // Next button
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'photo-nav-btn next';
+            nextBtn.innerHTML = '›';
+            nextBtn.id = 'photo-next-btn';
+            nextBtn.onclick = () => showPhoto(currentPhotoIndex + 1);
+
+            // Main photo
+            const mainPhoto = document.createElement('img');
+            mainPhoto.id = 'main-photo';
+            mainPhoto.src = `inputs/imagesFromPCT/${dayPhotos[0].fileName}`;
+            mainPhoto.alt = 'Photo';
+
+            // Photo info overlay
+            const infoOverlay = document.createElement('div');
+            infoOverlay.className = 'photo-info-overlay';
+            infoOverlay.id = 'photo-info-overlay';
+
+            const photoCounter = document.createElement('div');
+            photoCounter.className = 'photo-counter';
+            photoCounter.id = 'photo-counter';
+            photoCounter.textContent = `1 / ${dayPhotos.length}`;
+
+            const photoTimestamp = document.createElement('div');
+            photoTimestamp.className = 'photo-timestamp';
+            photoTimestamp.id = 'photo-timestamp';
+            const firstPhotoDate = new Date(dayPhotos[0].dateTaken);
+            photoTimestamp.textContent = firstPhotoDate.toLocaleTimeString();
+
+            infoOverlay.appendChild(photoCounter);
+            infoOverlay.appendChild(photoTimestamp);
+
+            photoViewer.appendChild(prevBtn);
+            photoViewer.appendChild(mainPhoto);
+            photoViewer.appendChild(nextBtn);
+            photoViewer.appendChild(infoOverlay);
+
+            // Thumbnail strip
+            const thumbnailStrip = document.createElement('div');
+            thumbnailStrip.className = 'thumbnail-strip';
+            thumbnailStrip.id = 'thumbnail-strip';
+
+            dayPhotos.forEach((photo, index) => {
+                const thumbItem = document.createElement('div');
+                thumbItem.className = `thumbnail-item ${index === 0 ? 'active' : ''}`;
+                thumbItem.dataset.index = index;
+                thumbItem.onclick = () => showPhoto(index);
+
+                const thumbImg = document.createElement('img');
+                thumbImg.src = `inputs/imagesFromPCT/${photo.fileName}`;
+                thumbImg.alt = `Thumbnail ${index + 1}`;
+
+                thumbItem.appendChild(thumbImg);
+                thumbnailStrip.appendChild(thumbItem);
+            });
+
+            photosSection.appendChild(photoViewer);
+            photosSection.appendChild(thumbnailStrip);
+
+            // Map and stats section
+            const mapStatsSection = document.createElement('div');
+            mapStatsSection.className = 'map-stats-section';
+
+            // Stats box
+            const statsBox = document.createElement('div');
+            statsBox.className = 'stats-box';
+
+            const photosStat = document.createElement('div');
+            photosStat.className = 'stat-item';
+            photosStat.innerHTML = `
+                <span class="stat-label">Photos Taken:</span>
+                <span class="stat-value">${dayPhotos.length}</span>
+            `;
+
+            const distanceStat = document.createElement('div');
+            distanceStat.className = 'stat-item';
+            distanceStat.innerHTML = `
+                <span class="stat-label">Distance Traveled:</span>
+                <span class="stat-value">${distanceMiles.toFixed(1)} miles</span>
+            `;
+
+            const altitudeStat = document.createElement('div');
+            altitudeStat.className = 'stat-item';
+            if (camping && camping.altitude) {
+                const altitudeFt = Math.round(camping.altitude * 3.28084);
+                altitudeStat.innerHTML = `
+                    <span class="stat-label">Camp Altitude:</span>
+                    <span class="stat-value">${altitudeFt.toLocaleString()} ft</span>
+                `;
+            }
+
+            statsBox.appendChild(photosStat);
+            statsBox.appendChild(distanceStat);
+            if (camping && camping.altitude) {
+                statsBox.appendChild(altitudeStat);
+            }
+
+            // Map
+            const mapDiv = document.createElement('div');
+            mapDiv.className = 'day-map';
+            mapDiv.id = `map-day-${dayNumber}`;
+
+            mapStatsSection.appendChild(statsBox);
+            mapStatsSection.appendChild(mapDiv);
+
+            // Assemble content
+            content.appendChild(photosSection);
+            content.appendChild(mapStatsSection);
+
+            // Assemble card
+            dayCard.appendChild(header);
+            dayCard.appendChild(content);
+            container.appendChild(dayCard);
+
+            // Create map after DOM is updated
+            setTimeout(() => {
+                const map = createDayMap(dayNumber, dayPhotos, `map-day-${dayNumber}`);
+                if (map) {
+                    dayMaps[dayNumber] = map;
+                }
+            }, 100);
+        }
+        // Show a specific photo in the album view
+        function showPhoto(index) {
+            if (index < 0 || index >= currentDayPhotos.length) return;
+
+            currentPhotoIndex = index;
+            const photo = currentDayPhotos[index];
+
+            // Update main photo
+            const mainPhoto = document.getElementById('main-photo');
+            if (mainPhoto) {
+                mainPhoto.src = `inputs/imagesFromPCT/${photo.fileName}`;
+            }
+
+            // Update counter
+            const counter = document.getElementById('photo-counter');
+            if (counter) {
+                counter.textContent = `${index + 1} / ${currentDayPhotos.length}`;
+            }
+
+            // Update timestamp
+            const timestamp = document.getElementById('photo-timestamp');
+            if (timestamp) {
+                const photoDate = new Date(photo.dateTaken);
+                timestamp.textContent = photoDate.toLocaleTimeString();
+            }
+
+            // Update thumbnail active state
+            const thumbnails = document.querySelectorAll('.thumbnail-item');
+            thumbnails.forEach((thumb, i) => {
+                if (i === index) {
+                    thumb.classList.add('active');
+                    // Scroll thumbnail into view
+                    thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } else {
+                    thumb.classList.remove('active');
+                }
+            });
+
+            // Update navigation buttons
+            const prevBtn = document.getElementById('photo-prev-btn');
+            const nextBtn = document.getElementById('photo-next-btn');
+            if (prevBtn) prevBtn.disabled = index === 0;
+            if (nextBtn) nextBtn.disabled = index === currentDayPhotos.length - 1;
+        }
+
+        // Populate day selector dropdown
+        function populateDaySelector() {
+            const select = document.getElementById('day-select');
+            select.innerHTML = '<option value="">Choose a day...</option>';
+
+            for (let day = 1; day <= totalDays; day++) {
+                if (photosByDay[day] && photosByDay[day].length > 0) {
+                    const option = document.createElement('option');
+                    option.value = day;
+                    const camping = campingLocations.find(loc => loc.day === day);
+                    const date = camping ? new Date(camping.date).toLocaleDateString() : '';
+                    option.textContent = `Day ${day}${date ? ' - ' + date : ''} (${photosByDay[day].length} photos)`;
+                    select.appendChild(option);
+                }
+            }
+        }
+
+        // Show selected day
+        function showDay(dayNumber) {
+            if (!dayNumber || !photosByDay[dayNumber]) return;
+
+            currentSelectedDay = dayNumber;
+            const camping = campingLocations.find(loc => loc.day === dayNumber);
+            const dayPhotos = photosByDay[dayNumber];
+
+            renderDayCard(dayNumber, camping, dayPhotos);
+
+            // Update navigation buttons
+            updateNavigationButtons();
+
+            // Show the container
+            document.getElementById('days-container').style.display = 'flex';
+        }
+
+        // Update navigation button states
+        function updateNavigationButtons() {
+            const prevBtn = document.getElementById('prev-day-btn');
+            const nextBtn = document.getElementById('next-day-btn');
+
+            // Find previous day with photos
+            let prevDay = currentSelectedDay - 1;
+            while (prevDay >= 1 && (!photosByDay[prevDay] || photosByDay[prevDay].length === 0)) {
+                prevDay--;
+            }
+            prevBtn.disabled = prevDay < 1;
+
+            // Find next day with photos
+            let nextDay = currentSelectedDay + 1;
+            while (nextDay <= totalDays && (!photosByDay[nextDay] || photosByDay[nextDay].length === 0)) {
+                nextDay++;
+            }
+            nextBtn.disabled = nextDay > totalDays;
+        }
+
+        // Navigate to previous day
+        function goToPreviousDay() {
+            let prevDay = currentSelectedDay - 1;
+            while (prevDay >= 1 && (!photosByDay[prevDay] || photosByDay[prevDay].length === 0)) {
+                prevDay--;
+            }
+            if (prevDay >= 1) {
+                document.getElementById('day-select').value = prevDay;
+                showDay(prevDay);
+            }
+        }
+
+        // Navigate to next day
+        function goToNextDay() {
+            let nextDay = currentSelectedDay + 1;
+            while (nextDay <= totalDays && (!photosByDay[nextDay] || photosByDay[nextDay].length === 0)) {
+                nextDay++;
+            }
+            if (nextDay <= totalDays) {
+                document.getElementById('day-select').value = nextDay;
+                showDay(nextDay);
+            }
+        }
+
+        // Load all data and render
+        async function loadAndRender() {
+            try {
+                // Load photos
+                const photoResponse = await fetch('inputs/map_overlay_metadata/image_metadata.csv');
+                const photoText = await photoResponse.text();
+                photos = parseCSV(photoText);
+
+                // Sort photos by timestamp
+                photos.sort((a, b) => {
+                    const dateA = new Date(a.dateTaken);
+                    const dateB = new Date(b.dateTaken);
+                    return dateA - dateB;
+                });
+
+                // Load camping locations
+                const campingResponse = await fetch('inputs/map_overlay_metadata/daily_locations.json');
+                campingLocations = await campingResponse.json();
+
+                console.log(`Loaded ${photos.length} photos and ${campingLocations.length} camping locations`);
+
+                // Group photos by day
+                totalDays = getJourneyDay(photos[photos.length - 1].dateTaken);
+
+                for (let day = 1; day <= totalDays; day++) {
+                    const dayPhotos = getPhotosForDay(day);
+                    if (dayPhotos.length > 0) {
+                        photosByDay[day] = dayPhotos;
+                    }
+                }
+
+                // Populate day selector
+                populateDaySelector();
+
+                // Set up event listeners
+                document.getElementById('day-select').addEventListener('change', (e) => {
+                    const dayNumber = parseInt(e.target.value);
+                    if (dayNumber) {
+                        showDay(dayNumber);
+                    }
+                });
+
+                document.getElementById('prev-day-btn').addEventListener('click', goToPreviousDay);
+                document.getElementById('next-day-btn').addEventListener('click', goToNextDay);
+
+                // Add keyboard navigation for photos
+                document.addEventListener('keydown', (e) => {
+                    if (currentDayPhotos.length === 0) return;
+
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        showPhoto(currentPhotoIndex - 1);
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        showPhoto(currentPhotoIndex + 1);
+                    }
+                });
+
+                // Hide loading, show selector
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('day-selector-container').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').textContent = 'Error loading journey data. Please try again.';
+            }
+        }
+
+        // Load data when page loads
+        loadAndRender();
+    </script>
+</body>
+</html>
