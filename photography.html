@@ -318,6 +318,15 @@
             background: #1D1D1B;
         }
 
+        .day-view-toggle {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            z-index: 3000;
+            display: flex;
+            gap: 10px;
+        }
+
         .slideshow-progress {
             position: absolute;
             top: 20px;
@@ -364,6 +373,12 @@
         </div>
     </header>
     
+    <!-- Day View Toggle and Autoplay Buttons (Top Left of Page) -->
+    <div class="day-view-toggle">
+        <button class="slideshow-btn" id="toggle-view-btn">📅 Day View</button>
+        <button class="slideshow-btn" id="top-play-pause-btn">▶ Play</button>
+    </div>
+
     <!-- Slideshow Container -->
     <div class="slideshow-container">
         <div class="slideshow-photo-panel">
@@ -398,9 +413,7 @@
             </div>
             <div class="slideshow-controls">
                 <button class="slideshow-btn" id="prev-btn">⏮ Previous</button>
-                <button class="slideshow-btn" id="play-pause-btn">⏸ Pause</button>
                 <button class="slideshow-btn" id="next-btn">Next ⏭</button>
-                <button class="slideshow-btn" id="toggle-view-btn">📅 Day View</button>
                 <button class="slideshow-btn close" id="close-slideshow-btn">✕ Close</button>
             </div>
         </div>
@@ -571,14 +584,14 @@
             const toggleBtn = document.getElementById('toggle-view-btn');
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
-            const playPauseBtn = document.getElementById('play-pause-btn');
+            const topPlayPauseBtn = document.getElementById('top-play-pause-btn');
 
             if (isDayView) {
                 // Switch to day view
                 toggleBtn.textContent = '📷 Photo View';
                 prevBtn.textContent = '⏮ Previous Day';
                 nextBtn.textContent = 'Next Day ⏭';
-                playPauseBtn.style.display = 'none'; // Hide play/pause in day view
+                topPlayPauseBtn.style.display = 'none'; // Hide top play/pause in day view
 
                 // Get current photo's day
                 const currentPhoto = slideshowPhotos[currentSlideIndex];
@@ -590,7 +603,23 @@
                 toggleBtn.textContent = '📅 Day View';
                 prevBtn.textContent = '⏮ Previous';
                 nextBtn.textContent = 'Next ⏭';
-                playPauseBtn.style.display = '';
+                topPlayPauseBtn.style.display = '';
+
+                // Jump to first photo of the current day
+                const dayPhotos = slideshowPhotos.filter(photo => {
+                    return getJourneyDay(photo.dateTaken) === currentDayNumber;
+                });
+
+                if (dayPhotos.length > 0) {
+                    // Find the index of the first photo of this day in the full slideshow
+                    const firstPhotoOfDay = dayPhotos[0];
+                    const indexInSlideshow = slideshowPhotos.findIndex(photo =>
+                        photo.fileName === firstPhotoOfDay.fileName
+                    );
+                    if (indexInSlideshow !== -1) {
+                        currentSlideIndex = indexInSlideshow;
+                    }
+                }
 
                 showSlide(currentSlideIndex);
             }
@@ -707,6 +736,10 @@
                     maxZoom: 17,
                     attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
                 }).addTo(slideshowMap);
+
+                // Create a custom pane for photo markers to ensure they're on top
+                slideshowMap.createPane('photoPane');
+                slideshowMap.getPane('photoPane').style.zIndex = 650; // Higher than overlayPane (400) and markerPane (600)
 
                 // Add PCT trail to slideshow map if available
                 if (pctTrail) {
@@ -863,7 +896,8 @@
                     color: '#fff',
                     weight: 3,
                     opacity: 1,
-                    fillOpacity: 0.9
+                    fillOpacity: 0.9,
+                    pane: 'photoPane'
                 }).addTo(slideshowMap);
 
                 // Don't auto-open popup - user can click on camping marker to see details
@@ -987,7 +1021,8 @@
                     color: '#fff',
                     weight: 2,
                     opacity: 1,
-                    fillOpacity: 0.8
+                    fillOpacity: 0.8,
+                    pane: 'photoPane'
                 }).addTo(slideshowMap);
 
                 const photoDate = new Date(photo.dateTaken);
@@ -1012,17 +1047,17 @@
                 boundsPoints.push([previousDayCamping.latitude, previousDayCamping.longitude]);
             }
 
-            // Load GPX track for this day
-            loadGPXForDay(dayNumber, boundsPoints);
-
-            // Fit map to show all points
-            if (boundsPoints.length > 0) {
-                const bounds = L.latLngBounds(boundsPoints);
-                slideshowMap.fitBounds(bounds, {
-                    padding: [50, 50],
-                    maxZoom: 14
-                });
-            }
+            // Load GPX track for this day and fit bounds after loading
+            loadGPXForDay(dayNumber, boundsPoints).then(() => {
+                // Fit map to show all points (including GPX track points)
+                if (boundsPoints.length > 0) {
+                    const bounds = L.latLngBounds(boundsPoints);
+                    slideshowMap.fitBounds(bounds, {
+                        padding: [50, 50],
+                        maxZoom: 14
+                    });
+                }
+            });
 
             setTimeout(() => {
                 slideshowMap.invalidateSize();
@@ -1113,7 +1148,7 @@
 
         function startAutoPlay() {
             isPlaying = true;
-            document.getElementById('play-pause-btn').textContent = '⏸ Pause';
+            document.getElementById('top-play-pause-btn').textContent = '⏸ Pause';
             slideshowInterval = setInterval(() => {
                 showSlide(currentSlideIndex + 1);
             }, 3000); // 3 seconds per photo
@@ -1121,7 +1156,7 @@
 
         function stopAutoPlay() {
             isPlaying = false;
-            document.getElementById('play-pause-btn').textContent = '▶ Play';
+            document.getElementById('top-play-pause-btn').textContent = '▶ Play';
             if (slideshowInterval) {
                 clearInterval(slideshowInterval);
                 slideshowInterval = null;
@@ -1154,7 +1189,7 @@
             }
         });
 
-        document.getElementById('play-pause-btn').addEventListener('click', function() {
+        document.getElementById('top-play-pause-btn').addEventListener('click', function() {
             if (isPlaying) {
                 stopAutoPlay();
             } else {
