@@ -410,6 +410,9 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet GPX Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script></script>
     
     <script>
         // Slideshow functionality
@@ -932,6 +935,9 @@
             document.getElementById('slideshow-total').textContent = totalDays;
         }
 
+        // Store GPX layer for day view
+        let dayGPXLayer = null;
+
         // Update map to show all photos from a specific day
         function updateMapForDay(dayNumber, dayPhotos) {
             if (!slideshowMap) return;
@@ -951,6 +957,12 @@
             if (slideshowMarker) {
                 slideshowMap.removeLayer(slideshowMarker);
                 slideshowMarker = null;
+            }
+
+            // Remove old GPX layer if exists
+            if (dayGPXLayer) {
+                slideshowMap.removeLayer(dayGPXLayer);
+                dayGPXLayer = null;
             }
 
             // Add markers for all photos in this day
@@ -991,6 +1003,9 @@
                 boundsPoints.push([previousDayCamping.latitude, previousDayCamping.longitude]);
             }
 
+            // Load GPX track for this day
+            loadGPXForDay(dayNumber, boundsPoints);
+
             // Fit map to show all points
             if (boundsPoints.length > 0) {
                 const bounds = L.latLngBounds(boundsPoints);
@@ -1003,6 +1018,76 @@
             setTimeout(() => {
                 slideshowMap.invalidateSize();
             }, 100);
+        }
+
+        // Load GPX track for a specific day
+        async function loadGPXForDay(dayNumber, boundsPoints) {
+            try {
+                // Get the date for this day
+                const dayPhotos = getPhotosForDay(dayNumber);
+                if (dayPhotos.length === 0) return;
+
+                // Extract date from first photo (format: 2025-04-29T...)
+                const firstPhotoDate = new Date(dayPhotos[0].dateTaken);
+                const dateStr = firstPhotoDate.toISOString().split('T')[0]; // Gets YYYY-MM-DD
+
+                // Load GPX index
+                const indexResponse = await fetch('inputs/map_overlay_metadata/gpx/index.json');
+                const gpxFiles = await indexResponse.json();
+
+                // Find GPX files for this date
+                const dayGPXFiles = gpxFiles.filter(filename => filename.startsWith(dateStr));
+
+                console.log(`Found ${dayGPXFiles.length} GPX files for day ${dayNumber} (${dateStr})`);
+
+                if (dayGPXFiles.length === 0) return;
+
+                const parser = new DOMParser();
+
+                // Load and display each GPX file for this day
+                for (const filename of dayGPXFiles) {
+                    const gpxPath = `inputs/map_overlay_metadata/gpx/${filename}`;
+
+                    try {
+                        const gpxResponse = await fetch(gpxPath);
+                        const gpxText = await gpxResponse.text();
+
+                        // Parse GPX
+                        const gpxDoc = parser.parseFromString(gpxText, 'text/xml');
+                        const trackPoints = gpxDoc.querySelectorAll('trkpt');
+
+                        if (trackPoints.length > 0) {
+                            const coordinates = Array.from(trackPoints).map(pt => {
+                                const lat = parseFloat(pt.getAttribute('lat'));
+                                const lon = parseFloat(pt.getAttribute('lon'));
+                                boundsPoints.push([lat, lon]);
+                                return [lat, lon];
+                            });
+
+                            // Create polyline for this GPX track
+                            const track = L.polyline(coordinates, {
+                                color: '#3498db',
+                                weight: 3,
+                                opacity: 0.7,
+                                smoothFactor: 1
+                            }).addTo(slideshowMap);
+
+                            track.bindPopup(`<b>Hiking Track</b><br>Date: ${dateStr}<br>Points: ${coordinates.length}`);
+
+                            // Store the layer so we can remove it later
+                            if (!dayGPXLayer) {
+                                dayGPXLayer = L.layerGroup([track]).addTo(slideshowMap);
+                            } else {
+                                dayGPXLayer.addLayer(track);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn(`Failed to load GPX file ${filename}:`, err);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading GPX for day:', error);
+            }
         }
 
         // Update map to highlight a specific photo (when clicked in day view)

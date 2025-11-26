@@ -7,6 +7,16 @@
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet GPX Plugin CSS -->
+    <style>
+        .gpx-track {
+            stroke: #FF6B35;
+            stroke-width: 3;
+            stroke-opacity: 0.8;
+            fill: none;
+        }
+    </style>
     
     <style>
         * {
@@ -525,7 +535,10 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
+
+    <!-- Leaflet GPX Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
+
     <script>
         // Initialize the map
         const map = L.map('map').setView([40.0, -120.0], 6);
@@ -556,7 +569,8 @@
                     opacity: 0.8,
                     smoothFactor: 1,
                     pane: 'overlayPane'  // Ensures trail appears below markers
-                }).addTo(map);
+                });
+                pctTrailLayerGroup.addLayer(pctTrail);
 
                 // Fit map to show entire trail
                 map.fitBounds(pctTrail.getBounds(), { padding: [50, 50] });
@@ -573,7 +587,8 @@
                     weight: 4,
                     opacity: 0.8,
                     pane: 'overlayPane'  // Ensures trail appears below markers
-                }).addTo(map);
+                });
+                pctTrailLayerGroup.addLayer(pctTrail);
             });
         
         // Add markers for termini
@@ -609,6 +624,12 @@
             landmarkMarkers.push(marker);
         });
         
+        // Create layer groups for different types of overlays
+        const campingLayerGroup = L.layerGroup().addTo(map);
+        const photoLayerGroup = L.layerGroup().addTo(map);
+        const pctTrailLayerGroup = L.layerGroup().addTo(map);
+        const gpxTracksLayerGroup = L.layerGroup().addTo(map);
+
         // Load and display daily camping locations
         const campingMarkers = [];
 
@@ -643,7 +664,8 @@
                             weight: 2,
                             opacity: 1,
                             fillOpacity: 0.9
-                        }).addTo(map);
+                        });
+                        campingLayerGroup.addLayer(marker);
 
                         marker.bindPopup(popupContent);
                         campingMarkers.push(marker);
@@ -670,7 +692,8 @@
                                     iconSize: [24, 24],
                                     iconAnchor: [12, 12]
                                 })
-                            }).addTo(map);
+                            });
+                            campingLayerGroup.addLayer(dayLabel);
 
                             // Attach the same popup to the day label so clicking it also shows the message
                             dayLabel.bindPopup(popupContent);
@@ -694,6 +717,72 @@
                 // Hide loading message even if data fails to load
                 document.getElementById('loading').classList.add('hidden');
             });
+
+        // Load and display GPX tracks
+        const gpxTracks = [];
+
+        // Function to load all GPX files
+        async function loadGPXTracks() {
+            try {
+                // Get list of GPX files from index
+                const indexResponse = await fetch('inputs/map_overlay_metadata/gpx/index.json');
+                const gpxFiles = await indexResponse.json();
+
+                console.log(`Found ${gpxFiles.length} GPX files`);
+
+                const parser = new DOMParser();
+
+                // Load each GPX file
+                for (const filename of gpxFiles) {
+                    const gpxPath = `inputs/map_overlay_metadata/gpx/${filename}`;
+
+                    try {
+                        const gpxResponse = await fetch(gpxPath);
+                        const gpxText = await gpxResponse.text();
+
+                        // Parse GPX using DOMParser
+                        const gpxDoc = parser.parseFromString(gpxText, 'text/xml');
+                        const trackPoints = gpxDoc.querySelectorAll('trkpt');
+
+                        if (trackPoints.length > 0) {
+                            const coordinates = Array.from(trackPoints).map(pt => {
+                                return [
+                                    parseFloat(pt.getAttribute('lat')),
+                                    parseFloat(pt.getAttribute('lon'))
+                                ];
+                            });
+
+                            // Create polyline for this GPX track
+                            const track = L.polyline(coordinates, {
+                                color: '#3498db',
+                                weight: 3,
+                                opacity: 0.7,
+                                smoothFactor: 1
+                            });
+
+                            // Extract date from filename (format: 2025-04-29-12-35-28.gpx)
+                            const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})/);
+                            const trackDate = dateMatch ? dateMatch[1] : 'Unknown';
+
+                            track.bindPopup(`<b>Hiking Track</b><br>Date: ${trackDate}<br>Points: ${coordinates.length}`);
+
+                            gpxTracksLayerGroup.addLayer(track);
+                            gpxTracks.push({ filename, track, date: trackDate });
+                        }
+                    } catch (err) {
+                        console.warn(`Failed to load GPX file ${filename}:`, err);
+                    }
+                }
+
+                console.log(`Loaded ${gpxTracks.length} GPX tracks`);
+
+            } catch (error) {
+                console.error('Error loading GPX tracks:', error);
+            }
+        }
+
+        // Load GPX tracks
+        loadGPXTracks();
 
         // Load and display photo locations
         const photoMarkers = [];
@@ -745,7 +834,8 @@
                             opacity: 1,
                             fillOpacity: 0.7,
                             pane: 'markerPane'  // Ensures markers appear above polylines
-                        }).addTo(map);
+                        });
+                        photoLayerGroup.addLayer(marker);
 
                         // Create popup with image
                         const imagePath = `inputs/imagesFromPCT/${photo.fileName}`;
@@ -783,6 +873,19 @@
             });
 
         console.log('PCT Trail Map loaded successfully');
+
+        // Add layer control
+        const overlayMaps = {
+            "PCT Trail": pctTrailLayerGroup,
+            "Daily Hikes (GPX)": gpxTracksLayerGroup,
+            "Camping Locations": campingLayerGroup,
+            "Photo Locations": photoLayerGroup
+        };
+
+        L.control.layers(null, overlayMaps, {
+            collapsed: false,
+            position: 'topright'
+        }).addTo(map);
 
         // Collapse/Expand functionality for panels
         function setupCollapseButton(buttonId, contentId, panelId) {
