@@ -543,15 +543,15 @@
         // Initialize the map
         const map = L.map('map').setView([40.0, -120.0], 6);
         
-        // Add ArcGIS Satellite imagery - free satellite/aerial view
+        // Add OpenTopoMap - shows topographic features, trails, and place names
         // Alternative free options:
         // 1. OpenStreetMap: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-        // 2. OpenTopoMap: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
+        // 2. ArcGIS Satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
         // 3. Clean streets: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
 
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
         }).addTo(map);
         
         // Load PCT trail from GPX-derived JSON file
@@ -754,9 +754,9 @@
 
                             // Create polyline for this GPX track
                             const track = L.polyline(coordinates, {
-                                color: '#3498db',
-                                weight: 3,
-                                opacity: 0.7,
+                                color: '#FF00FF',
+                                weight: 5,
+                                opacity: 0.8,
                                 smoothFactor: 1
                             });
 
@@ -874,18 +874,94 @@
 
         console.log('PCT Trail Map loaded successfully');
 
-        // Add layer control
-        const overlayMaps = {
-            "PCT Trail": pctTrailLayerGroup,
-            "Daily Hikes (GPX)": gpxTracksLayerGroup,
-            "Camping Locations": campingLayerGroup,
-            "Photo Locations": photoLayerGroup
-        };
+        // Create custom map view selector control
+        const MapViewControl = L.Control.extend({
+            options: {
+                position: 'topleft'
+            },
 
-        L.control.layers(null, overlayMaps, {
-            collapsed: false,
-            position: 'topright'
-        }).addTo(map);
+            onAdd: function(map) {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                container.style.backgroundColor = 'white';
+                container.style.padding = '10px';
+                container.style.borderRadius = '4px';
+                container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+
+                const label = L.DomUtil.create('label', '', container);
+                label.innerHTML = '<strong>Map View:</strong><br>';
+                label.style.marginBottom = '5px';
+                label.style.display = 'block';
+
+                const select = L.DomUtil.create('select', '', container);
+                select.style.padding = '5px';
+                select.style.fontSize = '14px';
+                select.style.cursor = 'pointer';
+                select.style.width = '180px';
+
+                const options = [
+                    { value: 'all', label: 'Show All Layers' },
+                    { value: 'pct', label: 'PCT Trail Only' },
+                    { value: 'hikes', label: 'Daily Hikes Only' },
+                    { value: 'camping', label: 'Camping Locations Only' },
+                    { value: 'photos', label: 'Photo Locations Only' },
+                    { value: 'none', label: 'Hide All Overlays' }
+                ];
+
+                options.forEach(opt => {
+                    const option = L.DomUtil.create('option', '', select);
+                    option.value = opt.value;
+                    option.text = opt.label;
+                });
+
+                // Set default to show all
+                select.value = 'all';
+
+                // Handle selection changes
+                L.DomEvent.on(select, 'change', function(e) {
+                    const value = e.target.value;
+
+                    // Remove all layers first
+                    map.removeLayer(pctTrailLayerGroup);
+                    map.removeLayer(gpxTracksLayerGroup);
+                    map.removeLayer(campingLayerGroup);
+                    map.removeLayer(photoLayerGroup);
+
+                    // Add back based on selection
+                    switch(value) {
+                        case 'all':
+                            map.addLayer(pctTrailLayerGroup);
+                            map.addLayer(gpxTracksLayerGroup);
+                            map.addLayer(campingLayerGroup);
+                            map.addLayer(photoLayerGroup);
+                            break;
+                        case 'pct':
+                            map.addLayer(pctTrailLayerGroup);
+                            break;
+                        case 'hikes':
+                            map.addLayer(gpxTracksLayerGroup);
+                            break;
+                        case 'camping':
+                            map.addLayer(campingLayerGroup);
+                            break;
+                        case 'photos':
+                            map.addLayer(photoLayerGroup);
+                            break;
+                        case 'none':
+                            // All layers already removed
+                            break;
+                    }
+                });
+
+                // Prevent map interactions when using the control
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.disableScrollPropagation(container);
+
+                return container;
+            }
+        });
+
+        // Add the custom control to the map
+        map.addControl(new MapViewControl());
 
         // Collapse/Expand functionality for panels
         function setupCollapseButton(buttonId, contentId, panelId) {
@@ -1020,9 +1096,9 @@
             // Initialize slideshow map
             if (!slideshowMap) {
                 slideshowMap = L.map('slideshow-map').setView([40.0, -120.0], 6);
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    maxZoom: 19,
-                    attribution: 'Tiles &copy; Esri'
+                L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 17,
+                    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
                 }).addTo(slideshowMap);
 
                 // Add PCT trail to slideshow map if available
