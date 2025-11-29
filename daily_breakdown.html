@@ -321,31 +321,15 @@
 
         /* Thumbnail Strip */
         .thumbnail-strip {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
             gap: 8px;
-            overflow-x: auto;
             padding: 10px 0;
-            scroll-behavior: smooth;
-        }
-
-        .thumbnail-strip::-webkit-scrollbar {
-            height: 8px;
-        }
-
-        .thumbnail-strip::-webkit-scrollbar-track {
-            background: #f0f0f0;
-            border-radius: 4px;
-        }
-
-        .thumbnail-strip::-webkit-scrollbar-thumb {
-            background: #038285;
-            border-radius: 4px;
         }
 
         .thumbnail-item {
-            flex-shrink: 0;
-            width: 80px;
-            height: 80px;
+            width: 100%;
+            aspect-ratio: 1;
             cursor: pointer;
             border-radius: 6px;
             overflow: hidden;
